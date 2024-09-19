@@ -6,35 +6,44 @@ MINER_CMD="/hive/miners/xmrig-new/xmrig/6.22.0/xmrig -o pool.supportxmr.com:5555
 IDLE_THRESHOLD=5
 MINER_PID=0
 
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+}
+
 while true; do
     CURRENT_IDLE_COUNT=$(tail -n 10 "$LOG_FILE" | grep -c "rqiner_manager] Idle period | Waiting for work")
-    echo "Current idle count: $CURRENT_IDLE_COUNT"
+    log "当前空闲计数: $CURRENT_IDLE_COUNT"
 
     if [ "$CURRENT_IDLE_COUNT" -ge "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -eq 0 ]; then
-        echo "Starting miner..."
+        log "启动矿工..."
         nohup $MINER_CMD >> "$LOG_FILE" 2>&1 &
         MINER_PID=$!
-        echo "Miner PID: $MINER_PID"
+        log "矿工 PID: $MINER_PID"
     fi
 
     if [ "$CURRENT_IDLE_COUNT" -lt "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -ne 0 ]; then
-        echo "Stopping miner..."
+        log "停止矿工..."
         kill "$MINER_PID"
+        if [ $? -eq 0 ]; then
+            log "矿工成功停止。"
+        else
+            log "停止矿工失败。"
+        fi
         MINER_PID=0
     fi
 
-    # 检查日志文件的修改时间
     LAST_MODIFIED=$(stat -c %Y "$LOG_FILE")
     CURRENT_TIME=$(date +%s)
     TIME_DIFF=$((CURRENT_TIME - LAST_MODIFIED))
 
     if [ "$TIME_DIFF" -ge 180 ]; then
-        echo "Log file has not changed for 3 minutes. Executing miner stop..."
+        log "日志文件3分钟未更改。执行矿工停止..."
         miner stop
         sleep 20
-        echo "Executing miner start after 20 seconds..."
+        log "20秒后执行矿工启动..."
         miner start
     fi
 
     sleep 30
 done
+
