@@ -39,34 +39,41 @@ rotate_log() {
         mv "$LOG_FILE" "$LOG_FILE.$(date +%Y%m%d)"
         touch "$LOG_FILE"
         LAST_ROTATE=$CURRENT_TIME
+        # 删除7天前的日志文件
+        find /var/log/miner/custom/ -name "scanr.log.*" -mtime +7 -exec rm -f {} \;
     fi
 }
 
-while true; do
-    check_idle
+main_loop() {
+    while true; do
+        check_idle
 
-    if [ "$CURRENT_IDLE_COUNT" -ge "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -eq 0 ]; then
-        start_miner
-    fi
+        if [ "$CURRENT_IDLE_COUNT" -ge "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -eq 0 ]; then
+            start_miner
+        fi
 
-    if [ "$CURRENT_IDLE_COUNT" -lt "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -ne 0 ]; then
-        stop_miner
-    fi
+        if [ "$CURRENT_IDLE_COUNT" -lt "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -ne 0 ]; then
+            stop_miner
+        fi
 
-    check_log_modification
+        check_log_modification
 
-    if [ "$TIME_DIFF" -ge 180 ]; then
-        echo "$(date): 日志文件3分钟未更新。执行停止矿工..."
-        miner stop
-        sleep 28
-        echo "$(date): 28秒后重新启动矿工..."
-        miner start
-    fi
+        if [ "$TIME_DIFF" -ge 180 ]; then
+            echo "$(date): 日志文件3分钟未更新。执行停止矿工..."
+            miner stop
+            sleep 20
+            echo "$(date): 20秒后重新启动矿工..."
+            miner start
+        fi
 
-    rotate_log
+        rotate_log
 
-    sleep 30
-done
+        sleep 30
+    done
+}
+
+main_loop
+
 
 
 
