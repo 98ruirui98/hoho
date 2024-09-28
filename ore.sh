@@ -19,7 +19,14 @@ while true; do
 
     if [ "$CURRENT_IDLE_COUNT" -lt "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -ne 0 ]; then
         echo "Stopping miner..."
-        kill "$MINER_PID"
+        pkill -f "ore-mine-pool-linux"
+        sleep 5
+        if pgrep -f "ore-mine-pool-linux" > /dev/null; then
+            echo "Processes are still running, forcing stop..."
+            pkill -9 -f "ore-mine-pool-linux"
+        else
+            echo "Processes stopped successfully."
+        fi
         MINER_PID=0
     fi
 
