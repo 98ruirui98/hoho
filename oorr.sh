@@ -8,24 +8,33 @@ MIN_IDLE_LINES=5
 NO_CHANGE_INTERVAL=180
 MINER_STOP_CMD="miner stop"
 MINER_START_CMD="miner start"
+WORKER_RUNNING=false
+
+# 获取文件的初始修改时间
+initial_mod_time=$(stat -c %Y "$LOG_FILE")
 
 while true; do
-    # Check the last 10 lines of the log file
+    # 检查日志文件的最后10行
     IDLE_COUNT=$(tail -n 10 "$LOG_FILE" | grep -c "$IDLE_PATTERN")
 
-    if [ "$IDLE_COUNT" -ge "$MIN_IDLE_LINES" ]; then
-        # Start the worker if idle pattern is found in at least 5 lines
+    if [ "$IDLE_COUNT" -ge "$MIN_IDLE_LINES" ] && [ "$WORKER_RUNNING" = false ]; then
+        # 如果最后10行中有5行或更多行包含空闲模式，并且挖矿程序未运行，则执行挖矿程序
         $WORKER_CMD &
-    else
-        # Kill all ore-mine-pool-linux processes if idle pattern is found in less than 5 lines
+        WORKER_RUNNING=true
+    elif [ "$IDLE_COUNT" -lt "$MIN_IDLE_LINES" ]; then
+        # 如果少于5行包含空闲模式，则杀死所有 ore-mine-pool-linux 进程，并设置挖矿程序状态为未运行
         pkill -f ore-mine-pool-linux
+        WORKER_RUNNING=false
     fi
 
-    # Check if the log file has changed in the last 3 minutes
-    if [ $(find "$LOG_FILE" -mmin +3) ]; then
+    # 检查日志文件在过去3分钟内是否有变化
+    current_mod_time=$(stat -c %Y "$LOG_FILE")
+    if [ "$((current_mod_time - initial_mod_time))" -ge "$NO_CHANGE_INTERVAL" ]; then
         $MINER_STOP_CMD
         sleep 25
         $MINER_START_CMD
+        # 更新初始修改时间
+        initial_mod_time=$(stat -c %Y "$LOG_FILE")
     fi
 
     sleep $CHECK_INTERVAL
