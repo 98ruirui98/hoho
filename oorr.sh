@@ -22,9 +22,11 @@ while true; do
         $WORKER_CMD &
         WORKER_RUNNING=true
     elif [ "$IDLE_COUNT" -lt "$MIN_IDLE_LINES" ]; then
-        # 如果少于5行包含空闲模式，则杀死所有 ore-mine-pool-linux 进程，并设置挖矿程序状态为未运行
-        pkill -f ore-mine-pool-linux
-        WORKER_RUNNING=false
+        # 如果少于5行包含空闲模式，并且有挖矿程序运行，则杀死所有 ore-mine-pool-linux 进程
+        if pgrep -f ore-mine-pool-linux > /dev/null; then
+            pkill -f ore-mine-pool-linux
+            WORKER_RUNNING=false
+        fi
     fi
 
     # 检查日志文件在过去3分钟内是否有变化
