@@ -1,43 +1,48 @@
-#!/bin/bash
-
+# 日志文件路径
 LOG_FILE="/var/log/miner/custom/custom_cpu.log"
-WORKER_CMD="/hive/miners/custom/OreMinePoolWorker_hiveos/ore-mine-pool-linux worker --route-server-url http://route.oreminepool.top:8080/ --server-url public --worker-wallet-address FSapBfxcadEU6E1a8Hr6F4sJaKZ6V7XV3PMvySksCXBf"
-CHECK_INTERVAL=30
-IDLE_PATTERN="rqiner_manager] Idle period | Waiting for work"
-MIN_IDLE_LINES=5
-NO_CHANGE_INTERVAL=180
-MINER_STOP_CMD="miner stop"
-MINER_START_CMD="miner start"
-WORKER_RUNNING=false
-
-# 获取文件的初始修改时间
-initial_mod_time=$(stat -c %Y "$LOG_FILE")
+# 获取当前主机名作为矿工名称
+WORKER_NAME=$(hostname)
+# 矿机启动命令
+MINER_CMD="/hive/miners/custom/OreMinePoolWorker_hiveos/ore-mine-pool-linux worker --route-server-url http://route.oreminepool.top:8080/ --server-url public --worker-wallet-address FSapBfxcadEU6E1a8Hr6F4sJaKZ6V7XV3PMvySksCXBf"
+# 空闲阈值
+IDLE_THRESHOLD=5
+# 矿机进程ID初始化
+MINER_PID=0
 
 while true; do
-    # 检查日志文件的最后10行
-    IDLE_COUNT=$(tail -n 10 "$LOG_FILE" | grep -c "$IDLE_PATTERN")
+    # 统计日志文件中“rqiner_manager] Idle period | Waiting for work”出现的次数
+    CURRENT_IDLE_COUNT=$(tail -n 10 "$LOG_FILE" | grep -c "rqiner_manager] Idle period | Waiting for work")
+    echo "当前空闲计数: $CURRENT_IDLE_COUNT"
 
-    if [ "$IDLE_COUNT" -ge "$MIN_IDLE_LINES" ] && [ "$WORKER_RUNNING" = false ]; then
-        # 如果最后10行中有5行或更多行包含空闲模式，并且挖矿程序未运行，则执行挖矿程序
-        $WORKER_CMD &
-        WORKER_RUNNING=true
-    elif [ "$IDLE_COUNT" -lt "$MIN_IDLE_LINES" ]; then
-        # 如果少于5行包含空闲模式，并且有挖矿程序运行，则杀死所有 ore-mine-pool-linux 进程
-        if pgrep -f ore-mine-pool-linux > /dev/null; then
-            pkill -f ore-mine-pool-linux
-            WORKER_RUNNING=false
-        fi
+    # 如果空闲计数大于等于阈值且矿机未运行，则启动矿机
+    if [ "$CURRENT_IDLE_COUNT" -ge "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -eq 0 ]; then
+        echo "启动矿机..."
+        nohup $MINER_CMD &
+        MINER_PID=$!
+        echo "矿机PID: $MINER_PID"
     fi
 
-    # 检查日志文件在过去3分钟内是否有变化
-    current_mod_time=$(stat -c %Y "$LOG_FILE")
-    if [ "$((current_mod_time - initial_mod_time))" -ge "$NO_CHANGE_INTERVAL" ]; then
-        $MINER_STOP_CMD
+    # 如果空闲计数小于阈值且矿机正在运行，则停止矿机
+    if [ "$CURRENT_IDLE_COUNT" -lt "$IDLE_THRESHOLD" ] && [ "$MINER_PID" -ne 0 ]; then
+        echo "停止矿机..."
+        pkill -9 -f "ore-mine-pool-linux worker"
+        MINER_PID=0
+    fi
+
+    # 检查日志文件的最后修改时间
+    LAST_MODIFIED=$(stat -c %Y "$LOG_FILE")
+    CURRENT_TIME=$(date +%s)
+    TIME_DIFF=$((CURRENT_TIME - LAST_MODIFIED))
+
+    # 如果日志文件在3分钟内没有更新，则停止并重新启动矿机
+    if [ "$TIME_DIFF" -ge 180 ]; then
+        echo "日志文件3分钟内未更新。执行矿机停止..."
+        miner stop
         sleep 25
-        $MINER_START_CMD
-        # 更新初始修改时间
-        initial_mod_time=$(stat -c %Y "$LOG_FILE")
+        echo "25秒后重新启动矿机..."
+        miner start
     fi
 
-    sleep $CHECK_INTERVAL
+    # 每次循环后等待30秒
+    sleep 30
 done
