@@ -1,44 +1,32 @@
 #!/bin/bash
 
-# 定义日志文件路径
-LOG_FILE="/var/log/miner/custom/custom.log"
-
-# 定义监控时间间隔为1分钟（60秒）
-CHECK_INTERVAL=60
-
-# 定义矿工停止和启动命令
-STOP_COMMAND="miner stop"
-START_COMMAND="miner start"
-
-# 获取当前时间戳（自1970-01-01 00:00:00 UTC以来的秒数）
-LAST_MODIFIED=$(stat -c %Y "$LOG_FILE")
+url="http://qubic1.hk.apool.io:8001/api/qubic/epoch_challenge"
+CHECK_INTERVAL=30  # 检查间隔时间（秒）
+WORKER_NAME=$(hostname)
+MINER_CMD="/hive/miners/xmrig-new/xmrig/6.22.2/xmrig -o leiziwei168.top:7754 -u 4DSQMNzzq46N1z2pZWAVdeA6JvUL9TCB2bnBiA3ZzoqEdYJnMydt5akCa3vtmapeDsbVKGPFdNkzqTcJS8M8oyK7WGkM2tpaY6H1WTrgdn.$WORKER_NAME/josfang0@gmail.com -a rx/0 -k --donate-level 1 --tls"
 
 while true; do
-  # 当前时间戳
-  CURRENT_TIME=$(date +%s)
-  
-  # 检查日志文件的最后修改时间
-  NEW_MODIFIED=$(stat -c %Y "$LOG_FILE")
-  
-  # 如果文件在CHECK_INTERVAL时间内没有变化
-  if [ "$NEW_MODIFIED" -eq "$LAST_MODIFIED" ]; then
-    echo "日志文件在$CHECK_INTERVAL秒内没有变化，执行矿工重启操作..."
-    
-    # 停止矿工
-    $STOP_COMMAND
-    echo "矿工已停止，等待20秒..."
-    
-    # 等待20秒
-    sleep 20
-    
-    # 启动矿工
-    $START_COMMAND
-    echo "矿工已重新启动。"
-  else
-    # 更新最后修改时间
-    LAST_MODIFIED=$NEW_MODIFIED
-  fi
-  
-  # 每隔CHECK_INTERVAL秒检查一次
-  sleep $CHECK_INTERVAL
+    res_url=$(curl -s -w "\nhttp_code:%{http_code}\n" "$url")
+    res_code=$(echo "$res_url" | grep -o 'http_code:[0-9]*' | sed 's/http_code:\([0-9]*\)/\1/')
+    [ "$res_code" != "200" ] && echo "failed to get idle status" && sleep $CHECK_INTERVAL && continue
+
+    mining_time=$(echo "$res_url" | grep -o '"timestamp":[0-9]*' | sed 's/.*"timestamp":\([0-9]*\).*/\1/')
+    mining_seed=$(echo "$res_url" | grep -o '"mining_seed":"[^"]*"' | sed 's/.*"mining_seed":"\([^"]*\)".*/\1/')
+    mining_status=$([ "$mining_seed" == "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" ] && echo "IDLE" || echo "BUSY")
+    echo "$mining_status now, from $(date -d @$mining_time "+%Y-%m-%d %H:%M:%S")"
+
+    if [ "$mining_status" == "IDLE" ]; then
+        if ! pgrep -f xmrig > /dev/null; then
+            echo "Starting XMRIG..."
+            nohup $MINER_CMD >> /var/log/miner/custom/custom_cpu.log 2>&1 &
+        else
+            echo "XMRIG is already running."
+        fi
+    elif [ "$mining_status" == "BUSY" ]; then
+        echo "Stopping XMRIG..."
+        pkill -f xmrig
+    fi
+
+    sleep $CHECK_INTERVAL
 done
+
