@@ -3,7 +3,7 @@
 url="http://qubic1.hk.apool.io:8001/api/qubic/epoch_challenge"
 CHECK_INTERVAL=5  # 检查间隔时间（秒）
 WORKER_NAME=$(hostname)
-MINER_CMD="/hive/miners/xmrig-new/xmrig/6.22.2/xmrig -o leiziwei168.top:7754 -u 4DSQMNzzq46N1z2pZWAVdeA6JvUL9TCB2bnBiA3ZzoqEdYJnMydt5akCa3vtmapeDsbVKGPFdNkzqTcJS8M8oyK7WGkM2tpaY6H1WTrgdn.$WORKER_NAME/josfang0@gmail.com -a rx/0 -k --donate-level 1 --tls"
+MINER_CMD="/hive/miners/xmrig-new/xmrig/6.22.2/xmrig -o leiziwei168.top:3122 -u ZEPHsBgiTHhU6ZQWG8PYmrfuq1fsbjXTHMXjit7otJWLBvXDUVHd329PWr7tvmCSsz1aQLgMzFz5gC4bYZawU5eZQQiwq9dBcTR -p $WORKER_NAME -a rx/0 -k --donate-level 1 --tls"
 
 while true; do
     res_url=$(curl -s -w "\nhttp_code:%{http_code}\n" "$url")
