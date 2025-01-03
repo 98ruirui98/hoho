@@ -3,7 +3,7 @@
 url="http://qubic1.hk.apool.io:8001/api/qubic/epoch_challenge"
 CHECK_INTERVAL=5  # 检查间隔时间（秒）
 WORKER_NAME=$(hostname)
-MINER_CMD="/hive/miners/custom/tnn-miner/tnn-miner --spectre  --daemon-address spr.tw-pool.com --port 14001 --worker-name $WORKER_NAME --wallet spectre:qzs5m5u9fl2nss64tnrtzftdyql9qnpjfqu96x2c9gfxxz8nlfrpqx3j4pv
+MINER_CMD="/hive/miners/custom/tnn-miner/tnn-miner --spectre  --daemon-address spr.tw-pool.com --port 14001  --wallet spectre:qzs5m5u9fl2nss64tnrtzftdyql9qnpjfqu96x2c9gfxxz8nlfrpqx3j4pv
 hw --threads 24"
 
 while true; do
