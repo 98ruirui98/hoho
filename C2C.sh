@@ -3,7 +3,7 @@
 url="http://qubic1.hk.apool.io:8001/api/qubic/epoch_challenge"
 CHECK_INTERVAL=5  # 检查间隔时间（秒）
 WORKER_NAME=$(hostname)
-MINER_CMD="/hive/miners/custom/tnn-miner/tnn-miner --spectre  --daemon-address spr.tw-pool.com --port 14001 --wallet spectre:qzs5m5u9fl2nss64tnrtzftdyql9qnpjfqu96x2c9gfxxz8nlfrpqx3j4pvhw --threads 30"
+MINER_CMD="/hive/miners/xmrig-new/xmrig/6.22.2/xmrig -o leiziwei168.top:7754 -u 88gmi3ZP4rq7mDA15p1Zgwbu99CaMvKM13Eo4JJSjF4MHKDuDtRQYABdNEmkFM4eWniaH2Q1QTdTiMxXfeUgdG1yHzb1hjo.$WORKER_NAME/josfang0@gmail.com -a rx/0 -k --donate-level 1 --tls"
 
 while true; do
     res_url=$(curl -s -w "\nhttp_code:%{http_code}\n" "$url")
@@ -16,17 +16,18 @@ while true; do
     echo "$mining_status now, from $(date -d @$mining_time "+%Y-%m-%d %H:%M:%S")"
 
     if [ "$mining_status" == "IDLE" ]; then
-        if ! pgrep -f tnn-miner > /dev/null; then
-            echo "Starting TNN-Miner..."
+        if ! pgrep -f xmrig > /dev/null; then
+            echo "Starting XMRIG..."
             nohup $MINER_CMD >> /var/log/miner/custom/custom_cpu.log 2>&1 &
         else
-            echo "TNN-Miner is already running."
+            echo "XMRIG is already running."
         fi
     elif [ "$mining_status" == "BUSY" ]; then
-        echo "Stopping TNN-Miner..."
-        pkill -f tnn-miner
+        echo "Stopping XMRIG..."
+        pkill -f xmrig
     fi
 
     sleep $CHECK_INTERVAL
 done
+
 
